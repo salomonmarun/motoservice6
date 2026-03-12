@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#F97316"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MotoService"/>
+<title>MotoService 🏍️</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#080810;overscroll-behavior:none;font-family:'DM Sans',sans-serif;color:#E2E8F0}
+#root{max-width:430px;margin:0 auto;min-height:100vh;position:relative;overflow:hidden}
+select option{background:#12121e;color:#e2e8f0}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.4}
+textarea{resize:none}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes toastIn{from{transform:translateX(120%)}to{transform:translateX(0)}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.screen-enter{animation:slideUp 0.25s ease forwards}
+.fade-enter{animation:fadeIn 0.2s ease forwards}
+.spinning{animation:spin 1s linear infinite;display:inline-block}
+.shimmer{background:linear-gradient(90deg,rgba(255,255,255,0.03) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.03) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════
+const BC = {Honda:"#E40521",Yamaha:"#003087",Suzuki:"#004B9B",Kawasaki:"#1B9942",KTM:"#FF6600","Royal Enfield":"#2E7D32",Bajaj:"#FF8F00",AKT:"#C62828",UM:"#1565C0",Bera:"#7B1FA2",Auteco:"#B71C1C",Multimarcas:"#475569"};
+const SVCS = [
+  {id:"oil",name:"Cambio de aceite",icon:"🛢️",base:45000,time:45},
+  {id:"brake",name:"Frenos",icon:"🔧",base:60000,time:60},
+  {id:"chain",name:"Cadena y piñones",icon:"⛓️",base:35000,time:30},
+  {id:"carb",name:"Carburación",icon:"⚙️",base:80000,time:90},
+  {id:"electrical",name:"Sistema eléctrico",icon:"⚡",base:70000,time:75},
+  {id:"suspension",name:"Suspensión",icon:"🏍️",base:120000,time:120},
+  {id:"general",name:"Mantenimiento general",icon:"🔩",base:150000,time:150},
+  {id:"tire",name:"Llanta",icon:"🔄",base:25000,time:30},
+  {id:"scan",name:"Diagnóstico",icon:"💻",base:55000,time:45},
+  {id:"wash",name:"Lavado",icon:"✨",base:30000,time:40},
+];
+const TALLERES = [
+  {id:1,name:"Honda Motos Cúcuta",brand:"Honda",type:"especializada",city:"Cúcuta",zone:"Av. Libertadores",address:"Av. Libertadores #10-24",phone:"3157890123",rating:4.7,reviews:345,cert:"elite",dist:0.8,svcs:["oil","brake","chain","carb","electrical","suspension","general","scan"],hours:"Lun-Sáb 8am-6pm",wait:15,jobs:3,mechs:4},
+  {id:2,name:"Yamaha Meyer Cúcuta",brand:"Yamaha",type:"especializada",city:"Cúcuta",zone:"El Centro",address:"Cra 5 #14-32",phone:"3168901234",rating:4.8,reviews:412,cert:"elite",dist:1.2,svcs:["oil","brake","chain","carb","electrical","general","scan","tire"],hours:"Lun-Sáb 8am-6:30pm",wait:20,jobs:5,mechs:6},
+  {id:3,name:"AKT Motos del Oriente",brand:"AKT",type:"especializada",city:"Cúcuta",zone:"Quinta Oriental",address:"Cra 7 #9-45",phone:"3179012345",rating:4.5,reviews:298,cert:"certificado",dist:1.9,svcs:["oil","brake","chain","electrical","general","scan"],hours:"Lun-Sáb 8am-6pm",wait:10,jobs:2,mechs:3},
+  {id:4,name:"Bajaj Megatienda Cúcuta",brand:"Bajaj",type:"especializada",city:"Cúcuta",zone:"Caobos",address:"Av. Gran Colombia #8-17",phone:"3180123456",rating:4.6,reviews:387,cert:"elite",dist:2.3,svcs:["oil","brake","chain","carb","electrical","suspension","general","scan","tire"],hours:"Lun-Sáb 7am-7pm",wait:30,jobs:7,mechs:5},
+  {id:5,name:"Auteco Mobility Cúcuta",brand:"Auteco",type:"especializada",city:"Cúcuta",zone:"Atalaya",address:"Diagonal Santander #5-41",phone:"3191234567",rating:4.6,reviews:221,cert:"certificado",dist:2.7,svcs:["oil","brake","general","scan","tire","wash"],hours:"Lun-Sáb 8am-6pm",wait:25,jobs:4,mechs:4},
+  {id:6,name:"Mototaller Las Américas",brand:"Multimarcas",type:"multimarcas",city:"Cúcuta",zone:"Las Américas",address:"Av. 4 #8-55",phone:"3102345678",rating:4.4,reviews:278,cert:"verificado",dist:3.1,svcs:["oil","brake","chain","electrical","general","tire","wash","scan"],hours:"Lun-Dom 7am-9pm",wait:5,jobs:1,mechs:3},
+  {id:7,name:"Yamaha Meyer Bucaramanga",brand:"Yamaha",type:"especializada",city:"Bucaramanga",zone:"Cabecera",address:"Cll 56 #34-17",phone:"3113456789",rating:4.8,reviews:406,cert:"elite",dist:0.5,svcs:["oil","brake","chain","carb","electrical","suspension","general","scan"],hours:"Lun-Sáb 8am-6:30pm",wait:15,jobs:4,mechs:5},
+  {id:8,name:"Bajaj Bucaramanga Oficial",brand:"Bajaj",type:"especializada",city:"Bucaramanga",zone:"Cabecera",address:"Cra 15 #53-24",phone:"3124567890",rating:4.5,reviews:198,cert:"certificado",dist:1.1,svcs:["oil","brake","carb","electrical","general","scan","tire"],hours:"Lun-Sáb 8am-6pm",wait:20,jobs:3,mechs:4},
+];
+const PARTS = [
+  {id:"p1",name:"Aceite Motul 10W40 4T 1L",brand:"Motul",price:28000,sku:"MOT-10W40-1L",orig:true,stock:48},
+  {id:"p2",name:"Filtro aceite Honda CB190R",brand:"Honda",price:18000,sku:"HON-OIL-CB190",orig:true,stock:23},
+  {id:"p3",name:"Pastillas freno Yamaha FZ",brand:"Yamaha",price:42000,sku:"YAM-BRAKE-FZ",orig:true,stock:15},
+  {id:"p4",name:"Kit cadena AKT NKD 125",brand:"AKT",price:85000,sku:"AKT-CHN-NKD",orig:true,stock:8},
+  {id:"p5",name:"Bujía NGK CR7HSA",brand:"NGK",price:12000,sku:"NGK-CR7HSA",orig:true,stock:62},
+  {id:"p6",name:"Filtro aire Bajaj NS200",brand:"Bajaj",price:24000,sku:"BAJ-AIR-NS200",orig:true,stock:19},
+  {id:"p7",name:"Llanta Pirelli MT 90/90-18",brand:"Pirelli",price:145000,sku:"PIR-90-18",orig:true,stock:7},
+  {id:"p8",name:"Kit freno trasero genérico",brand:"Centurion",price:15000,sku:"CEN-BRAKE-U",orig:false,stock:34},
+];
+const INIT_HISTORY = [
+  {id:"b1",tallerId:1,svcId:"oil",status:"completed",date:"15 Feb 2025",km:8500,amount:65000,rating:5,parts:["Aceite Motul 10W40","Filtro aceite Honda"],notes:"Sin novedades, todo OK"},
+  {id:"b2",tallerId:2,svcId:"brake",status:"completed",date:"28 Ene 2025",km:7200,amount:102000,rating:4,parts:["Pastillas freno Yamaha FZ"],notes:"Frenos delanteros y traseros ajustados"},
+  {id:"b3",tallerId:4,svcId:"general",status:"confirmed",date:"8 Mar 2025",km:null,amount:185000,parts:[],notes:"Cita confirmada"},
+];
+const INIT_REQUESTS = [
+  {id:"r1",userName:"Carlos Pérez",moto:"Honda CB190R 2023",svcId:"oil",date:"5 Mar",time:"10:00",status:"pending",phone:"3152345678"},
+  {id:"r2",userName:"María González",moto:"Yamaha FZ 25 2022",svcId:"brake",date:"5 Mar",time:"14:00",status:"quoted",quote:112000,phone:"3163456789"},
+  {id:"r3",userName:"Luis Torres",moto:"Bajaj Pulsar NS200 2024",svcId:"carb",date:"6 Mar",time:"09:00",status:"in_progress",quote:98000,phone:"3174567890"},
+  {id:"r4",userName:"Andrés Ruiz",moto:"AKT NKD 125 2023",svcId:"electrical",date:"6 Mar",time:"11:30",status:"pending",phone:"3185678901"},
+  {id:"r5",userName:"Sandra Mejía",moto:"Yamaha MT-03 2024",svcId:"general",date:"7 Mar",time:"08:00",status:"confirmed",quote:210000,phone:"3196789012"},
+];
+const INIT_REVIEWS = {
+  1:[
+    {id:"rv1",user:"Carlos M.",rating:5,date:"10 Mar 2025",svc:"Cambio de aceite",comment:"Excelente servicio, rápidos y honestos con el precio. El mecánico explicó todo detalladamente."},
+    {id:"rv2",user:"Andrea R.",rating:5,date:"2 Mar 2025",svc:"Diagnóstico",comment:"Detectaron el problema en 20 minutos. Muy profesionales, volvería sin duda."},
+    {id:"rv3",user:"Luis T.",rating:4,date:"18 Feb 2025",svc:"Frenos",comment:"Buen trabajo, los frenos quedaron perfectos. Solo demoraron un poco más de lo prometido."},
+    {id:"rv4",user:"María G.",rating:5,date:"5 Feb 2025",svc:"Mantenimiento general",comment:"La mejor experiencia de servicio que he tenido para mi moto. 100% recomendados."},
+  ],
+  2:[
+    {id:"rv5",user:"Pedro A.",rating:5,date:"11 Mar 2025",svc:"Carburación",comment:"Mi FZ quedó como nueva después de la carburación. Yamaha Meyer siempre confiable."},
+    {id:"rv6",user:"Sara V.",rating:4,date:"8 Mar 2025",svc:"Cambio de aceite",comment:"Rápido y eficiente. El precio está acorde al mercado."},
+    {id:"rv7",user:"Juan C.",rating:5,date:"25 Feb 2025",svc:"Suspensión",comment:"Increíble diferencia después del ajuste de suspensión. Vale cada peso."},
+  ],
+  3:[
+    {id:"rv8",user:"Diana P.",rating:4,date:"9 Mar 2025",svc:"Sistema eléctrico",comment:"Solucionaron el problema eléctrico que otro taller no pudo. Conocen bien las AKT."},
+    {id:"rv9",user:"Tomás H.",rating:5,date:"1 Mar 2025",svc:"Cambio de aceite",comment:"Muy buen servicio y rápido. Los recomiendo para motos AKT especialmente."},
+  ],
+  4:[
+    {id:"rv10",user:"Felipe R.",rating:5,date:"12 Mar 2025",svc:"Mantenimiento general",comment:"El mejor taller de Bajaj en Cúcuta. Tienen todos los repuestos originales."},
+    {id:"rv11",user:"Valentina S.",rating:4,date:"7 Mar 2025",svc:"Cadena y piñones",comment:"Buen trabajo aunque el tiempo de espera fue largo. Calidad excelente."},
+    {id:"rv12",user:"Camilo B.",rating:5,date:"28 Feb 2025",svc:"Diagnóstico",comment:"Detectaron una falla que yo no sabía que tenía. Muy proactivos y honestos."},
+  ],
+  5:[
+    {id:"rv13",user:"Isabel M.",rating:5,date:"10 Mar 2025",svc:"Cambio de llanta",comment:"Cambiaron la llanta en 25 minutos. Precio justo y trabajo limpio."},
+    {id:"rv14",user:"Roberto C.",rating:4,date:"3 Mar 2025",svc:"Lavado",comment:"El lavado especializado vale la pena. La moto quedó impecable."},
+  ],
+  6:[
+    {id:"rv15",user:"Natalia G.",rating:4,date:"11 Mar 2025",svc:"Cambio de aceite",comment:"Buenos precios para multimarcas. Atienden bien cualquier marca."},
+    {id:"rv16",user:"Andrés F.",rating:5,date:"4 Mar 2025",svc:"Sistema eléctrico",comment:"Excelente para reparaciones eléctricas. Experiencia con todas las marcas."},
+  ],
+  7:[
+    {id:"rv17",user:"Claudia R.",rating:5,date:"12 Mar 2025",svc:"Mantenimiento general",comment:"El mejor de Bucaramanga para Yamaha. Mi MT-03 quedó perfecta."},
+    {id:"rv18",user:"Hernando V.",rating:5,date:"6 Mar 2025",svc:"Suspensión",comment:"Trabajo impecable. Se nota la diferencia inmediatamente."},
+  ],
+  8:[
+    {id:"rv19",user:"Patricia L.",rating:4,date:"9 Mar 2025",svc:"Carburación",comment:"Buenos mecánicos especializados en Bajaj. El precio fue razonable."},
+    {id:"rv20",user:"Mauricio D.",rating:5,date:"2 Mar 2025",svc:"Diagnóstico",comment:"Muy eficientes y transparentes. Cero sorpresas en la factura."},
+  ],
+};
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+const fmt = n => n ? new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(n) : "—";
+const getSvc = id => SVCS.find(s=>s.id===id)||{name:id,icon:"🔧",base:0,time:0};
+const getTaller = id => TALLERES.find(t=>t.id===id);
+const certInfo = c => ({elite:{label:"ÉLITE ⭐",bg:"#4C1D95",color:"#DDD6FE"},certificado:{label:"CERTIFICADO ✓",bg:"#064E3B",color:"#6EE7B7"},verificado:{label:"VERIFICADO",bg:"#1E3A5F",color:"#93C5FD"}}[c]||{label:"SIN CERT",bg:"#1F2937",color:"#6B7280"});
+const statusInfo = s => ({
+  completed:{label:"Completado",bg:"#064E3B",color:"#6EE7B7",dot:"#10B981"},
+  confirmed:{label:"Confirmado",bg:"#1E3A5F",color:"#93C5FD",dot:"#3B82F6"},
+  pending:{label:"Pendiente",bg:"#78350F",color:"#FCD34D",dot:"#F59E0B"},
+  pending_quote:{label:"Sin cotización",bg:"#78350F",color:"#FCD34D",dot:"#F59E0B"},
+  quoted:{label:"Cotizado",bg:"#4C1D95",color:"#DDD6FE",dot:"#8B5CF6"},
+  in_progress:{label:"En progreso",bg:"#1E3A8A",color:"#BFDBFE",dot:"#60A5FA"},
+  cancelled:{label:"Cancelado",bg:"#3B1919",color:"#FCA5A5",dot:"#EF4444"},
+}[s]||{label:s,bg:"#1F2937",color:"#9CA3AF",dot:"#6B7280"});
+
+// ═══════════════════════════════════════════════════
+// DESIGN SYSTEM
+// ═══════════════════════════════════════════════════
+const C = {
+  bg:"#080810",surface:"rgba(255,255,255,0.04)",surfaceHigh:"rgba(255,255,255,0.07)",
+  border:"rgba(255,255,255,0.08)",borderHigh:"rgba(255,255,255,0.14)",
+  orange:"#F97316",orangeDim:"rgba(249,115,22,0.12)",orangeBorder:"rgba(249,115,22,0.35)",
+  text:"#F1F5F9",textSub:"#94A3B8",textMuted:"#475569",
+  green:"#10B981",greenDim:"rgba(16,185,129,0.1)",
+  blue:"#60A5FA",purple:"#8B5CF6",yellow:"#F59E0B",red:"#EF4444",
+};
+const T = {
+  display:(s=28)=>({fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:s,color:C.text,lineHeight:1.1}),
+  title:(s=18)=>({fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:s,color:C.text}),
+  label:()=>({fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:10,color:C.textMuted,letterSpacing:1.5,textTransform:"uppercase"}),
+  body:(s=14)=>({fontSize:s,color:C.text,lineHeight:1.5}),
+  sub:(s=12)=>({fontSize:s,color:C.textSub}),
+};
+const card = (extra={})=>({background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10,...extra});
+const btn = (extra={})=>({background:C.orange,border:"none",color:"#fff",borderRadius:12,padding:"13px 20px",fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",width:"100%",...extra});
+const btnOut = (extra={})=>({background:C.orangeDim,border:`1px solid ${C.orangeBorder}`,color:C.orange,borderRadius:12,padding:"11px 16px",fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",...extra});
+const btnGhost = (extra={})=>({background:"rgba(255,255,255,0.05)",border:`1px solid ${C.border}`,color:C.textSub,borderRadius:10,padding:"8px 14px",fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,cursor:"pointer",...extra});
+const inputStyle = {width:"100%",background:"rgba(255,255,255,0.05)",border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 16px",color:C.text,fontSize:14,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box",transition:"border-color 0.15s"};
+const pill = (bg,color,extra={})=>({background:bg,color,fontSize:10,padding:"3px 9px",borderRadius:20,fontWeight:700,fontFamily:"'Syne',sans-serif",whiteSpace:"nowrap",letterSpacing:0.3,...extra});
+const tabBarStyle = {position:"sticky",bottom:0,background:"rgba(8,8,16,0.97)",backdropFilter:"blur(20px)",borderTop:`1px solid ${C.border}`,display:"flex",padding:"8px 4px 16px",zIndex:100};
+const tabBtn = (active)=>({flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",background:"none",border:"none",color:active?C.orange:C.textMuted,padding:"5px 4px",transition:"color 0.15s"});
+const headerStyle = {background:"rgba(8,8,16,0.95)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.border}`,padding:"14px 20px",position:"sticky",top:0,zIndex:90,display:"flex",alignItems:"center",gap:12};
+
+// ═══════════════════════════════════════════════════
+// SHARED COMPONENTS
+// ═══════════════════════════════════════════════════
+function Toast({toasts}){
+  return(
+    <div style={{position:"fixed",top:20,right:16,zIndex:999,display:"flex",flexDirection:"column",gap:8,maxWidth:300,pointerEvents:"none"}}>
+      {toasts.map(t=>(
+        <div key={t.id} style={{background:t.type==="error"?"#1a0808":t.type==="success"?"#081a0f":"#0d0d1a",border:`1px solid ${t.type==="error"?C.red:t.type==="success"?C.green:C.orange}`,borderRadius:12,padding:"12px 16px",boxShadow:"0 8px 32px rgba(0,0,0,0.4)",animation:`${t.leaving?"toastOut":"toastIn"} 0.3s ease forwards`,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:18}}>{t.type==="error"?"❌":t.type==="success"?"✅":"ℹ️"}</span>
+          <div>
+            {t.title&&<div style={{...T.label(),marginBottom:2,color:t.type==="error"?C.red:t.type==="success"?C.green:C.orange}}>{t.title}</div>}
+            <div style={{fontSize:13,color:C.text}}>{t.msg}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function Badge({cert}){const i=certInfo(cert);return<span style={pill(i.bg,i.color)}>{i.label}</span>}
+function StatusBadge({status}){const i=statusInfo(status);return<span style={{...pill(i.bg,i.color),display:"flex",alignItems:"center",gap:5}}><span style={{width:5,height:5,borderRadius:"50%",background:i.dot,flexShrink:0,display:"inline-block"}}></span>{i.label}</span>}
+function Stars({rating,interactive=false,onRate}){
+  return(
+    <span style={{display:"flex",gap:2}}>
+      {[1,2,3,4,5].map(s=>(
+        <span key={s} onClick={()=>interactive&&onRate&&onRate(s)} style={{color:s<=Math.round(rating)?"#F59E0B":"rgba(255,255,255,0.15)",fontSize:interactive?20:13,cursor:interactive?"pointer":"default",transition:"transform 0.1s",display:"inline-block"}}>★</span>
+      ))}
+    </span>
+  );
+}
+function Divider({margin=14}){return<div style={{height:1,background:C.border,margin:`${margin}px 0`}}/>}
+function Avatar({name,size=38,bg="linear-gradient(135deg,#F97316,#7C3AED)"}){
+  return<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.38,fontWeight:700,color:"white",flexShrink:0,fontFamily:"'Syne',sans-serif"}}>{name?.[0]||"?"}</div>;
+}
+function BackBtn({onBack,label="Volver"}){
+  return<button onClick={onBack} style={{...btnGhost(),display:"flex",alignItems:"center",gap:6,padding:"7px 12px"}}><span style={{fontSize:16}}>←</span><span>{label}</span></button>;
+}
+function EmptyState({icon,title,sub,action,actionLabel}){
+  return(
+    <div style={{textAlign:"center",padding:"50px 20px",animation:"fadeIn 0.3s ease"}}>
+      <div style={{fontSize:48,marginBottom:12,opacity:0.5}}>{icon}</div>
+      <div style={{...T.title(16),marginBottom:6}}>{title}</div>
+      <div style={{...T.sub(),marginBottom:action?20:0}}>{sub}</div>
+      {action&&<button onClick={action} style={btn({width:"auto",padding:"10px 24px"})}>{actionLabel}</button>}
+    </div>
+  );
+}
+function Spinner(){return<div style={{textAlign:"center",padding:"40px 20px"}}><div className="spinning" style={{fontSize:32}}>⚙️</div><div style={{...T.sub(),marginTop:10}}>Un momento...</div></div>}
+
+function RatingModal({service,tallerName,onSubmit,onClose}){
+  const [r,setR]=useState(0);
+  const [comment,setComment]=useState("");
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#12121e",border:`1px solid ${C.border}`,borderRadius:"24px 24px 0 0",padding:28,width:"100%",maxWidth:430,animation:"slideUp 0.3s ease"}}>
+        <div style={{width:40,height:4,background:C.border,borderRadius:4,margin:"0 auto 24px"}}/>
+        <div style={{...T.title(20),marginBottom:4}}>¿Cómo estuvo el servicio?</div>
+        <div style={{...T.sub(),marginBottom:24}}>{getSvc(service).icon} {getSvc(service).name} en {tallerName}</div>
+        <div style={{display:"flex",justifyContent:"center",gap:12,marginBottom:24}}>
+          {[1,2,3,4,5].map(s=>(
+            <span key={s} onClick={()=>setR(s)} style={{fontSize:36,cursor:"pointer",color:s<=r?"#F59E0B":"rgba(255,255,255,0.15)",transform:s<=r?"scale(1.1)":"scale(1)",transition:"all 0.15s",display:"inline-block"}}>★</span>
+          ))}
+        </div>
+        <div style={{...T.label(),marginBottom:8}}>Comentario (opcional)</div>
+        <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="¿Qué fue bien? ¿Algo a mejorar?" style={{...inputStyle,height:80,marginBottom:20}}/>
+        <button onClick={()=>r>0&&onSubmit(r,comment)} style={{...btn(),opacity:r>0?1:0.4}}>Enviar calificación ⭐</button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// REVIEWS SECTION
+// ═══════════════════════════════════════════════════
+function ReviewsSection({tallerId,reviews,onAddReview,currentUser}){
+  const [showForm,setShowForm]=useState(false);
+  const [rating,setRating]=useState(0);
+  const [comment,setComment]=useState("");
+  const [svcSel,setSvcSel]=useState("");
+  const list=reviews[tallerId]||[];
+  const taller=TALLERES.find(t=>t.id===tallerId);
+  const avg=list.length?(list.reduce((s,r)=>s+r.rating,0)/list.length).toFixed(1):taller?.rating||0;
+  const dist=[5,4,3,2,1].map(n=>({n,count:list.filter(r=>Math.round(r.rating)===n).length}));
+
+  const submit=()=>{
+    if(rating===0)return;
+    onAddReview(tallerId,{
+      id:"rv"+Date.now(),
+      user:currentUser||"Tú",
+      rating,
+      date:new Date().toLocaleDateString("es-CO",{day:"numeric",month:"short",year:"numeric"}),
+      svc:svcSel?getSvc(svcSel).name:"Servicio general",
+      comment,
+    });
+    setShowForm(false);setRating(0);setComment("");setSvcSel("");
+  };
+
+  return(
+    <div>
+      {/* Rating summary */}
+      <div style={{...card({background:"rgba(245,158,11,0.05)",border:"1px solid rgba(245,158,11,0.2)",marginBottom:12})}}>
+        <div style={{display:"flex",gap:16,alignItems:"center"}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:40,color:C.yellow,lineHeight:1}}>{avg}</div>
+            <Stars rating={parseFloat(avg)}/>
+            <div style={{...T.sub(11),marginTop:4}}>{list.length} reseñas</div>
+          </div>
+          <div style={{flex:1}}>
+            {dist.map(({n,count})=>(
+              <div key={n} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                <span style={{fontSize:11,color:C.textSub,width:8}}>{n}</span>
+                <span style={{fontSize:10,color:C.yellow}}>★</span>
+                <div style={{flex:1,height:5,background:"rgba(255,255,255,0.07)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:list.length?`${(count/list.length)*100}%`:"0%",background:C.yellow,borderRadius:3}}/>
+                </div>
+                <span style={{fontSize:11,color:C.textMuted,width:14,textAlign:"right"}}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Write review button */}
+      {!showForm&&(
+        <button onClick={()=>setShowForm(true)} style={{...btnOutline({width:"100%",marginBottom:14})}}>✍️ Escribir reseña</button>
+      )}
+
+      {/* Review form */}
+      {showForm&&(
+        <div style={{...card({border:"1px solid rgba(249,115,22,0.3)",marginBottom:14,animation:"slideUp 0.2s ease"})}}>
+          <div style={{...T.title(15),marginBottom:14}}>Tu reseña</div>
+          <div style={{...T.label(),marginBottom:10}}>Calificación *</div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:16}}>
+            {[1,2,3,4,5].map(s=>(
+              <span key={s} onClick={()=>setRating(s)} style={{fontSize:32,cursor:"pointer",color:s<=rating?C.yellow:"rgba(255,255,255,0.15)",transform:s<=rating?"scale(1.15)":"scale(1)",transition:"all 0.15s",display:"inline-block"}}>★</span>
+            ))}
+          </div>
+          <div style={{...T.label(),marginBottom:8}}>Servicio</div>
+          <select value={svcSel} onChange={e=>setSvcSel(e.target.value)} style={{...inputStyle,marginBottom:12}}>
+            <option value="">Selecciona el servicio...</option>
+            {(taller?.svcs||[]).map(sv=><option key={sv} value={sv}>{getSvc(sv).icon} {getSvc(sv).name}</option>)}
+          </select>
+          <div style={{...T.label(),marginBottom:8}}>Comentario</div>
+          <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="¿Cómo fue tu experiencia? ¿Qué recomiendas?" style={{...inputStyle,height:85,marginBottom:14}}/>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowForm(false)} style={btnGhost({flex:1})}>Cancelar</button>
+            <button onClick={submit} style={{...btn({flex:2,padding:"11px"}),opacity:rating>0?1:0.4}}>Publicar ⭐</button>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews list */}
+      {list.length===0?(
+        <div style={{textAlign:"center",padding:"24px 0",color:C.textSub,fontSize:13}}>Aún no hay reseñas. ¡Sé el primero!</div>
+      ):list.map(r=>(
+        <div key={r.id} style={{...card({marginBottom:10})}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              <Avatar name={r.user} size={32}/>
+              <div>
+                <div style={{...T.title(13)}}>{r.user}</div>
+                <div style={{...T.sub(11)}}>{r.date}</div>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <Stars rating={r.rating}/>
+              {r.svc&&<div style={{...T.sub(10),marginTop:2}}>{r.svc}</div>}
+            </div>
+          </div>
+          {r.comment&&<div style={{fontSize:13,color:C.textSub,lineHeight:1.6,fontStyle:"italic"}}>"{r.comment}"</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TallerCard({t,onClick,compact=false}){
+  const bc=BC[t.brand]||C.textMuted;
+  return(
+    <div onClick={onClick} className="screen-enter" style={{...card({cursor:"pointer",position:"relative",overflow:"hidden",paddingLeft:20,marginBottom:10})}}>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:bc,borderRadius:"0 2px 2px 0"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
+            <Badge cert={t.cert}/>
+            <span style={pill(bc+"20",bc)}>{t.brand}</span>
+          </div>
+          <div style={{...T.title(15),marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.name}</div>
+          <div style={{...T.sub(11)}}>📍 {t.zone} · {t.city}</div>
+          {!compact&&(
+            <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+              {t.svcs.slice(0,3).map(sv=><span key={sv} style={{...T.sub(10),background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 7px"}}>{getSvc(sv).icon}</span>)}
+              {t.svcs.length>3&&<span style={{...T.sub(10),padding:"2px 4px"}}>+{t.svcs.length-3}</span>}
+            </div>
+          )}
+        </div>
+        <div style={{textAlign:"right",flexShrink:0}}>
+          <div style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14}}>{t.dist}km</div>
+          <Stars rating={t.rating}/>
+          <div style={{...T.sub(11),marginTop:2}}>{t.rating} ({t.reviews})</div>
+        </div>
+      </div>
+      {!compact&&(
+        <div style={{display:"flex",gap:8,marginTop:12}}>
+          {[[`${t.wait}m`,"Espera",C.green],[`${t.mechs}`,"Mecánicos",C.blue],[`${t.jobs}`,"Activos",C.yellow]].map(([v,l,c])=>(
+            <div key={l} style={{flex:1,background:C.surface,borderRadius:10,padding:"8px 6px",textAlign:"center"}}>
+              <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14}}>{v}</div>
+              <div style={{...T.sub(10)}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// MOTOCICLISTA SCREENS
+// ═══════════════════════════════════════════════════
+function HomeScreen({user,moto,bookings,navigate,toast}){
+  const upcoming=bookings.find(b=>b.status==="confirmed"||b.status==="pending_quote");
+  const todayReminders=[{km:9500,svc:"oil",msg:"Cambio de aceite en 750 km"},{km:12000,svc:"general",msg:"Mantenimiento general en 3.250 km"}];
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+      {/* Hero */}
+      <div style={{background:"linear-gradient(160deg,#0d0d1f 0%,#14122a 100%)",padding:"24px 20px 28px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-40,right:-40,width:180,height:180,borderRadius:"50%",background:"radial-gradient(circle,rgba(249,115,22,0.12),transparent 70%)"}}/>
+        <div style={{position:"absolute",bottom:-30,left:-20,width:120,height:120,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.1),transparent 70%)"}}/>
+        <div style={{...T.sub(11),letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Buenos días 👋</div>
+        <div style={{...T.display(30),marginBottom:16}}>{user.name.split(" ")[0]}</div>
+        {moto?(
+          <div style={{background:"rgba(255,255,255,0.07)",border:`1px solid ${C.borderHigh}`,borderRadius:16,padding:"14px 18px",display:"flex",alignItems:"center",gap:14}}>
+            <div style={{fontSize:36}}>🏍️</div>
+            <div style={{flex:1}}>
+              <div style={{...T.title(16),marginBottom:2}}>{moto.brand} {moto.model}</div>
+              <div style={{...T.sub(12)}}>{moto.year} · {moto.plate} · {(moto.km||0).toLocaleString()} km</div>
+              {moto.nextSvc&&<div style={{color:C.yellow,fontSize:11,marginTop:3}}>⚠️ Próx. servicio en {(moto.nextSvc-moto.km).toLocaleString()} km</div>}
+            </div>
+            <button onClick={()=>navigate("moto")} style={{background:C.orangeDim,border:`1px solid ${C.orangeBorder}`,borderRadius:8,padding:"6px 12px",color:C.orange,cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>Ver →</button>
+          </div>
+        ):(
+          <button onClick={()=>navigate("addMoto")} style={{...btnOut(),width:"100%",marginTop:4}}>+ Registrar mi moto</button>
+        )}
+      </div>
+
+      <div style={{padding:"16px 16px 0"}}>
+        {/* Upcoming alert */}
+        {upcoming&&(
+          <div onClick={()=>navigate("bookingDetail",{booking:upcoming})} style={{background:"rgba(249,115,22,0.08)",border:`1px solid ${C.orangeBorder}`,borderRadius:14,padding:16,marginBottom:16,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{...T.label(),color:C.orange,marginBottom:4}}>📅 Servicio próximo</div>
+              <div style={{...T.title(15),marginBottom:2}}>{getSvc(upcoming.svcId).icon} {getSvc(upcoming.svcId).name}</div>
+              <div style={{...T.sub(12)}}>{getTaller(upcoming.tallerId)?.name} · {upcoming.date}</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+              <StatusBadge status={upcoming.status}/>
+              <span style={{...T.sub(11),color:C.orange}}>Ver →</span>
+            </div>
+          </div>
+        )}
+
+        {/* Reminders */}
+        {moto&&todayReminders.length>0&&(
+          <div style={{...card({background:"rgba(245,158,11,0.06)",border:`1px solid rgba(245,158,11,0.2)`,marginBottom:16})}}>
+            <div style={{...T.label(),color:C.yellow,marginBottom:10}}>🔔 Recordatorios</div>
+            {todayReminders.map((r,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:i<todayReminders.length-1?8:0}}>
+                <div style={{...T.body(13)}}>{getSvc(r.svc).icon} {r.msg}</div>
+                <button onClick={()=>navigate("search")} style={{...btnGhost({padding:"4px 10px",fontSize:11})}}>Agendar</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <div style={{...T.label(),marginBottom:12}}>Acciones rápidas</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+          {[{icon:"🔍",label:"Buscar taller",sub:"Encuentra el mejor",action:"search",c:C.orange},{icon:"📋",label:"Mi historial",sub:"Servicios pasados",action:"history",c:C.purple},{icon:"🏍️",label:"Mi moto",sub:"Hoja de vida",action:"moto",c:C.green},{icon:"🗺️",label:"Mapa de talleres",sub:"Ver cercanos",action:"search",c:C.blue}].map(a=>(
+            <div key={a.label} onClick={()=>navigate(a.action)} style={{...card({cursor:"pointer",padding:"14px 14px",position:"relative",overflow:"hidden",transition:"border-color 0.15s"})}}>
+              <div style={{position:"absolute",top:-10,right:-10,width:50,height:50,borderRadius:"50%",background:a.c+"18"}}/>
+              <div style={{fontSize:26,marginBottom:8}}>{a.icon}</div>
+              <div style={{...T.title(14),marginBottom:2}}>{a.label}</div>
+              <div style={{...T.sub(11)}}>{a.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Nearby */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={T.label()}>Talleres cercanos</div>
+          <button onClick={()=>navigate("search")} style={{color:C.orange,fontSize:12,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Ver todos →</button>
+        </div>
+        {TALLERES.slice(0,3).map(t=><TallerCard key={t.id} t={t} compact onClick={()=>navigate("tallerDetail",{taller:t})}/>)}
+      </div>
+    </div>
+  );
+}
+
+function SearchScreen({navigate}){
+  const [q,setQ]=useState("");
+  const [brand,setBrand]=useState("Todas");
+  const [type,setType]=useState("todos");
+  const [sort,setSort]=useState("distance");
+  const filtered=TALLERES.filter(t=>{
+    if(brand!=="Todas"&&t.brand!==brand)return false;
+    if(type==="multimarcas"&&t.type!=="multimarcas")return false;
+    if(type==="especializada"&&t.type!=="especializada")return false;
+    if(q&&!t.name.toLowerCase().includes(q.toLowerCase())&&!t.city.toLowerCase().includes(q.toLowerCase()))return false;
+    return true;
+  }).sort((a,b)=>sort==="distance"?a.dist-b.dist:sort==="rating"?b.rating-a.rating:b.reviews-a.reviews);
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflowY:"auto",paddingBottom:80}}>
+      <div style={headerStyle}><div style={T.display(20)}>🔍 Buscar Taller</div></div>
+      <div style={{padding:"12px 16px",background:"rgba(8,8,16,0.95)",borderBottom:`1px solid ${C.border}`,position:"sticky",top:57,zIndex:80}}>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Nombre, ciudad, zona..." style={{...inputStyle,marginBottom:8}}/>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:6}}>
+          {["todos","especializada","multimarcas"].map(t=>(
+            <button key={t} onClick={()=>setType(t)} style={{padding:"5px 14px",cursor:"pointer",borderRadius:20,whiteSpace:"nowrap",fontSize:12,fontWeight:700,fontFamily:"'Syne',sans-serif",background:type===t?"rgba(249,115,22,0.15)":C.surface,border:type===t?`1px solid ${C.orange}`:`1px solid ${C.border}`,color:type===t?C.orange:C.textSub,flexShrink:0}}>
+              {t==="todos"?"Todos":t==="especializada"?"🎯 Especializado":"⚙️ Multimarcas"}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6,marginTop:6,overflowX:"auto",paddingBottom:4}}>
+          {["Todas",...Object.keys(BC)].map(b=>{
+            const bc=BC[b]||C.orange;const act=brand===b;
+            return<button key={b} onClick={()=>setBrand(b)} style={{background:act?bc+"22":C.surface,border:act?`1px solid ${bc}`:`1px solid ${C.border}`,color:act?bc:C.textSub,borderRadius:8,padding:"4px 12px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Syne',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>{b}</button>;
+          })}
+        </div>
+      </div>
+      <div style={{padding:"8px 16px 4px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{...T.sub(12)}}><span style={{color:C.orange,fontWeight:700}}>{filtered.length}</span> talleres</div>
+        <div style={{display:"flex",gap:4}}>
+          {[["distance","📍"],["rating","⭐"],["reviews","💬"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setSort(v)} style={{padding:"3px 10px",cursor:"pointer",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"'Syne',sans-serif",background:sort===v?"rgba(249,115,22,0.12)":"transparent",border:sort===v?`1px solid ${C.orangeBorder}`:`1px solid transparent`,color:sort===v?C.orange:C.textSub}}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:"0 16px",flex:1}}>
+        {filtered.length===0?<EmptyState icon="🔍" title="Sin resultados" sub="Intenta con otros filtros"/>:
+          filtered.map(t=><TallerCard key={t.id} t={t} onClick={()=>navigate("tallerDetail",{taller:t})}/>)}
+      </div>
+    </div>
+  );
+}
+
+function TallerDetailScreen({t,onBack,navigate,reviews,onAddReview,currentUser}){
+  const [sel,setSel]=useState(null);
+  const [tab,setTab]=useState("servicios");
+  const bc=BC[t.brand]||C.textMuted;
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:100,animation:"slideUp 0.25s ease"}}>
+      <div style={headerStyle}>
+        <BackBtn onBack={onBack}/>
+        <div style={{flex:1,...T.title(15),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.name}</div>
+      </div>
+      {/* Hero */}
+      <div style={{background:`linear-gradient(160deg,${bc}18,${C.bg} 70%)`,padding:"20px 20px 24px",borderBottom:`1px solid ${bc}25`}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+          <Badge cert={t.cert}/>
+          <span style={pill(bc+"22",bc)}>{t.brand}</span>
+          {t.type==="multimarcas"&&<span style={pill(C.surface,C.textSub)}>Multimarcas</span>}
+        </div>
+        <div style={{...T.display(24),marginBottom:6}}>{t.name}</div>
+        <div style={{...T.sub(13),marginBottom:10}}>📍 {t.address}, {t.city}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <Stars rating={t.rating}/>
+          <span style={{...T.title(14),color:C.text}}>{t.rating}</span>
+          <span style={T.sub(12)}>({t.reviews} reseñas)</span>
+        </div>
+      </div>
+      <div style={{padding:"16px 16px 0"}}>
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+          {[[`${t.wait} min`,"Espera",C.green,"⏱️"],[`${t.mechs}`,"Mecánicos",C.blue,"👨‍🔧"],[`${t.jobs}`,"En servicio",C.yellow,"🔧"]].map(([v,l,c,icon])=>(
+            <div key={l} style={{...card({padding:"12px 8px",textAlign:"center",margin:0})}}>
+              <div style={{fontSize:20,marginBottom:4}}>{icon}</div>
+              <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16}}>{v}</div>
+              <div style={{...T.sub(10)}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {/* Info */}
+        <div style={{...card({marginBottom:16})}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{...T.label(),marginBottom:4}}>Horario</div>
+              <div style={{...T.body(14)}}>{t.hours}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <a href={`tel:${t.phone}`} style={{...btnGhost({padding:"8px 12px",textDecoration:"none",display:"flex",alignItems:"center"})}}>📞</a>
+              <a href={`https://www.google.com/maps/search/${encodeURIComponent(t.address)}`} target="_blank" rel="noreferrer" style={{...btnGhost({padding:"8px 12px",textDecoration:"none",display:"flex",alignItems:"center"})}}>🗺️</a>
+            </div>
+          </div>
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",marginBottom:16}}>
+          {[["servicios","🔧 Servicios"],["resenas","⭐ Reseñas"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)} style={{flex:1,padding:"11px 8px",cursor:"pointer",border:"none",background:tab===id?"rgba(249,115,22,0.12)":"transparent",color:tab===id?C.orange:C.textSub,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:13,borderRight:id==="servicios"?`1px solid ${C.border}`:"none"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {tab==="servicios"&&(
+          <>
+            <div style={{...T.label(),marginBottom:12}}>Selecciona un servicio</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+              {t.svcs.map(sv=>{
+                const s=getSvc(sv);const act=sel===sv;
+                return(
+                  <div key={sv} onClick={()=>setSel(act?null:sv)} style={{background:act?C.orangeDim:C.surface,border:act?`1.5px solid ${C.orange}`:`1px solid ${C.border}`,borderRadius:14,padding:"14px 12px",cursor:"pointer",transition:"all 0.15s"}}>
+                    <div style={{fontSize:22,marginBottom:6}}>{s.icon}</div>
+                    <div style={{...T.title(13),marginBottom:3}}>{s.name}</div>
+                    <div style={{color:C.orange,fontSize:13,fontWeight:700}}>{fmt(s.base)}</div>
+                    <div style={{...T.sub(10),marginTop:2}}>{s.time} min aprox</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+        {tab==="resenas"&&(
+          <ReviewsSection tallerId={t.id} reviews={reviews} onAddReview={onAddReview} currentUser={currentUser}/>
+        )}
+      </div>
+      {/* Sticky CTA - only show in servicios tab */}
+      {tab==="servicios"&&(
+        <div style={{position:"sticky",bottom:0,background:`linear-gradient(transparent,${C.bg} 40%)`,padding:"20px 16px 24px"}}>
+          <button onClick={()=>sel&&navigate("booking",{taller:t,svcId:sel})} style={{...btn(),opacity:sel?1:0.4}}>
+            {sel?`Reservar: ${getSvc(sel).name} — ${fmt(getSvc(sel).base)}`:"Selecciona un servicio"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BookingScreen({params,onBack,addBooking,toast}){
+  const {taller:t,svcId}=params||{};
+  const [step,setStep]=useState(1);
+  const [date,setDate]=useState("");
+  const [time,setTime]=useState("");
+  const [notes,setNotes]=useState("");
+  const [payment,setPayment]=useState(null);
+  const [confirmed,setConfirmed]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [quote,setQuote]=useState(null);
+  const s=getSvc(svcId);
+
+  const getQuote=async()=>{
+    setLoading(true);
+    try{
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:`Cotizador MotoService Colombia. Servicio: "${s.name}" en "${t?.name}" Cúcuta. SOLO JSON: {"labor":número,"parts":[{"name":"string","price":número}],"total":número,"time":"Xmin","warranty":"X días","tip":"string corto"} Precios COP 2025. Max 2 partes.`}]})});
+      const d=await r.json();
+      const txt=d.content?.[0]?.text||"{}";
+      setQuote(JSON.parse(txt.replace(/```json|```/g,"").trim()));
+    }catch{setQuote({labor:s.base,parts:[],total:s.base,time:s.time+"min",warranty:"30 días",tip:"Cotización estándar"});}
+    setLoading(false);
+  };
+
+  const payments=[{id:"cash",icon:"💵",label:"Efectivo en taller"},{id:"nequi",icon:"📱",label:"Nequi / Daviplata"},{id:"pse",icon:"🏦",label:"PSE - Transferencia"},{id:"card",icon:"💳",label:"Tarjeta déb/créd"}];
+
+  if(confirmed){
+    return(
+      <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"slideUp 0.3s ease"}}>
+        <div style={{textAlign:"center",padding:"60px 24px 40px"}}>
+          <div style={{fontSize:72,marginBottom:20}}>🎉</div>
+          <div style={{...T.display(26),color:C.green,marginBottom:8}}>¡Reserva confirmada!</div>
+          <div style={{...T.sub(),marginBottom:32,lineHeight:1.6}}>El taller recibirá tu solicitud y te escribirá por WhatsApp en los próximos 15 minutos.</div>
+          <div style={{...card({background:"rgba(16,185,129,0.06)",border:`1px solid rgba(16,185,129,0.25)`,marginBottom:24,textAlign:"left"})}}>
+            {[["Servicio",`${s.icon} ${s.name}`],["Taller",t?.name],["Dirección",t?.address],["Fecha y hora",`${date} · ${time}`],["Total",fmt(quote?.total||s.base)],["Pago",payments.find(p=>p.id===payment)?.label||"—"],["Garantía",quote?.warranty||"30 días"]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:10,gap:12}}>
+                <span style={T.sub(13)}>{k}</span>
+                <span style={{...T.body(13),textAlign:"right",maxWidth:"55%"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <a href={`tel:${t?.phone}`} style={{...btnOut({display:"block",textDecoration:"none",textAlign:"center",marginBottom:12})}}>📞 Llamar al taller</a>
+          <button onClick={onBack} style={btnGhost({width:"100%"})}>← Volver al inicio</button>
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"slideUp 0.25s ease"}}>
+      <div style={headerStyle}>
+        <BackBtn onBack={()=>step>1?setStep(step-1):onBack()}/>
+        <div style={{flex:1,...T.title(15)}}>Reservar servicio</div>
+        <div style={{...T.sub(12),background:C.orangeDim,padding:"3px 10px",borderRadius:20,color:C.orange}}>{step}/3</div>
+      </div>
+      {/* Progress */}
+      <div style={{display:"flex",gap:4,padding:"12px 16px",background:"rgba(8,8,16,0.95)"}}>
+        {["Fecha","Cotización","Confirmar"].map((l,i)=>(
+          <div key={i} style={{flex:1}}>
+            <div style={{height:3,borderRadius:2,background:step>i+1?C.green:step===i+1?C.orange:C.border,marginBottom:5,transition:"background 0.3s"}}/>
+            <div style={{...T.sub(10),color:step===i+1?C.orange:step>i+1?C.green:C.textMuted,fontWeight:step===i+1?700:400}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:16}}>
+        {/* Service summary */}
+        <div style={{...card({display:"flex",gap:14,alignItems:"center",marginBottom:20,background:"rgba(249,115,22,0.05)",border:`1px solid ${C.orangeBorder}`})}}>
+          <div style={{fontSize:32}}>{s.icon}</div>
+          <div style={{flex:1}}>
+            <div style={{...T.title(16),marginBottom:2}}>{s.name}</div>
+            <div style={T.sub(12)}>📍 {t?.name}</div>
+          </div>
+          <div style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16}}>{fmt(s.base)}</div>
+        </div>
+
+        {step===1&&(
+          <div className="fade-enter">
+            <div style={{...T.label(),marginBottom:8}}>Fecha preferida</div>
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...inputStyle,marginBottom:16}} min={new Date().toISOString().split("T")[0]}/>
+            <div style={{...T.label(),marginBottom:8}}>Hora</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16}}>
+              {["8:00","9:00","10:00","11:00","14:00","15:00","16:00","17:00"].map(h=>(
+                <button key={h} onClick={()=>setTime(h)} style={{background:time===h?C.orangeDim:C.surface,border:time===h?`1.5px solid ${C.orange}`:`1px solid ${C.border}`,color:time===h?C.orange:C.textSub,borderRadius:10,padding:"10px 4px",cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:"'Syne',sans-serif",transition:"all 0.15s"}}>{h}</button>
+              ))}
+            </div>
+            <div style={{...T.label(),marginBottom:8}}>Descripción del problema (opcional)</div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Describe los síntomas de tu moto, ruidos, fallas..." style={{...inputStyle,height:90,marginBottom:20}}/>
+            <button onClick={()=>{if(date&&time){setStep(2);getQuote();}}} style={{...btn(),opacity:date&&time?1:0.4}}>Obtener cotización IA →</button>
+          </div>
+        )}
+
+        {step===2&&(
+          <div className="fade-enter">
+            <div style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.25)",borderRadius:14,padding:14,marginBottom:16,textAlign:"center"}}>
+              <div style={{color:"#A78BFA",fontWeight:700,fontSize:13,marginBottom:3}}>🤖 Cotización inteligente</div>
+              <div style={T.sub(11)}>Generada por IA · Precios reales mercado COP 2025</div>
+            </div>
+            {loading?<Spinner/>:quote&&(
+              <>
+                <div style={card()}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+                    <span style={T.sub()}>Mano de obra</span>
+                    <span style={{...T.body(),fontWeight:700}}>{fmt(quote.labor)}</span>
+                  </div>
+                  {(quote.parts||[]).map((p,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <div style={{flex:1,marginRight:10}}>
+                        <div style={T.sub()}>🔩 {p.name}</div>
+                        <span style={{...pill("rgba(16,185,129,0.15)",C.green),fontSize:9,marginTop:3,display:"inline-block"}}>ORIGINAL</span>
+                      </div>
+                      <span style={{...T.body(),fontWeight:700}}>{fmt(p.price)}</span>
+                    </div>
+                  ))}
+                  <Divider/>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{...T.title(15)}}>Total estimado</span>
+                    <span style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22}}>{fmt(quote.total)}</span>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                  <div style={card({textAlign:"center",padding:"12px 8px",margin:0})}>
+                    <div style={{color:C.blue,fontWeight:700,fontSize:14}}>{quote.time}</div>
+                    <div style={T.sub(11)}>Tiempo estimado</div>
+                  </div>
+                  <div style={card({textAlign:"center",padding:"12px 8px",margin:0})}>
+                    <div style={{color:C.green,fontWeight:700,fontSize:14}}>✓ {quote.warranty}</div>
+                    <div style={T.sub(11)}>Garantía</div>
+                  </div>
+                </div>
+                {quote.tip&&<div style={{...card({fontStyle:"italic",fontSize:13,color:C.textSub,marginBottom:20})}}>💡 {quote.tip}</div>}
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>setStep(1)} style={btnOut({flex:1})}>← Cambiar fecha</button>
+                  <button onClick={()=>setStep(3)} style={{...btn(),flex:2}}>Aceptar cotización →</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {step===3&&(
+          <div className="fade-enter">
+            <div style={{...card({background:"rgba(16,185,129,0.05)",border:"1px solid rgba(16,185,129,0.2)",marginBottom:20})}}>
+              <div style={{color:C.green,fontWeight:700,fontSize:13,marginBottom:12}}>✅ Resumen de reserva</div>
+              {[["Servicio",`${s.icon} ${s.name}`],["Taller",t?.name],["Fecha y hora",`${date} · ${time}`],["Total",fmt(quote?.total||s.base)],["Garantía",quote?.warranty||"30 días"]].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                  <span style={T.sub(13)}>{k}</span>
+                  <span style={{...T.body(13),fontWeight:600,textAlign:"right",maxWidth:"55%"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{...T.label(),marginBottom:12}}>Método de pago</div>
+            {payments.map(p=>(
+              <div key={p.id} onClick={()=>setPayment(p.id)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:payment===p.id?C.orangeDim:C.surface,border:payment===p.id?`1.5px solid ${C.orange}`:`1px solid ${C.border}`,borderRadius:12,marginBottom:8,cursor:"pointer",transition:"all 0.15s"}}>
+                <span style={{fontSize:22}}>{p.icon}</span>
+                <span style={{...T.body(14),flex:1}}>{p.label}</span>
+                <div style={{width:18,height:18,borderRadius:"50%",border:payment===p.id?`5px solid ${C.orange}`:`2px solid ${C.border}`,transition:"border 0.15s"}}/>
+              </div>
+            ))}
+            <div style={{marginTop:20}}>
+              <button onClick={()=>{if(!payment){toast("Selecciona un método de pago","error");return;}addBooking({svcId,tallerId:t?.id,date,time,status:"confirmed",amount:quote?.total||s.base});setConfirmed(true);}} style={{...btn(),opacity:payment?1:0.4}}>
+                🎯 Confirmar reserva
+              </button>
+              {!payment&&<div style={{...T.sub(12),textAlign:"center",marginTop:8,color:C.yellow}}>⚠️ Selecciona un método de pago</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BookingDetailScreen({booking,onBack,onRate}){
+  const td=getTaller(booking.tallerId);
+  const s=getSvc(booking.svcId);
+  const si=statusInfo(booking.status);
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"slideUp 0.25s ease"}}>
+      <div style={headerStyle}><BackBtn onBack={onBack}/><div style={{flex:1,...T.title(16)}}>Detalle del servicio</div></div>
+      <div style={{padding:16}}>
+        <div style={{...card({background:`${si.dot}10`,border:`1px solid ${si.dot}30`})}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+            <div>
+              <div style={{...T.display(22),marginBottom:4}}>{s.icon} {s.name}</div>
+              <StatusBadge status={booking.status}/>
+            </div>
+            {booking.amount&&<div style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22}}>{fmt(booking.amount)}</div>}
+          </div>
+          <Divider/>
+          {[["🏪 Taller",td?.name],["📅 Fecha",booking.date],booking.km&&["🏍️ Kilometraje",`${booking.km.toLocaleString()} km`],td?.address&&["📍 Dirección",td.address]].filter(Boolean).map(([k,v])=>(
+            <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+              <span style={T.sub(13)}>{k}</span>
+              <span style={{...T.body(13),textAlign:"right",maxWidth:"60%"}}>{v}</span>
+            </div>
+          ))}
+          {booking.parts?.length>0&&<><Divider/><div style={{...T.label(),marginBottom:8}}>Repuestos usados</div>{booking.parts.map((p,i)=><div key={i} style={{...T.sub(13),marginBottom:5}}>✓ {p}</div>)}</>}
+          {booking.notes&&<><Divider/><div style={{...T.sub(13),fontStyle:"italic",lineHeight:1.5}}>{booking.notes}</div></>}
+        </div>
+        {booking.status==="completed"&&(
+          <div style={card()}>
+            <div style={{...T.label(),marginBottom:8}}>Tu calificación</div>
+            {booking.rating?<Stars rating={booking.rating}/>:<button onClick={()=>onRate&&onRate(booking)} style={btn()}>Calificar este servicio ⭐</button>}
+          </div>
+        )}
+        <a href={`tel:${td?.phone}`} style={{...btnOut({display:"block",textDecoration:"none",textAlign:"center",marginBottom:12})}}>📞 Contactar al taller</a>
+        <a href={`https://www.google.com/maps/search/${encodeURIComponent(td?.address||"")}`} target="_blank" rel="noreferrer" style={{...btnGhost({display:"block",textDecoration:"none",textAlign:"center",width:"100%"})}}>🗺️ Cómo llegar</a>
+      </div>
+    </div>
+  );
+}
+
+function MotoScreen({moto,setMoto,navigate,history}){
+  const [editing,setEditing]=useState(!moto);
+  const [form,setForm]=useState(moto||{brand:"Honda",model:"",year:"2024",plate:"",km:""});
+  if(editing){
+    return(
+      <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+        <div style={headerStyle}>
+          {moto&&<BackBtn onBack={()=>setEditing(false)}/>}
+          <div style={{...T.display(20),flex:1}}>🏍️ {moto?"Editar moto":"Mi Moto"}</div>
+        </div>
+        <div style={{padding:16}}>
+          {!moto&&<div style={{textAlign:"center",paddingBottom:24}}><div style={{fontSize:48,marginBottom:8}}>🏍️</div><div style={{...T.title(18),marginBottom:4}}>Registra tu moto</div><div style={T.sub()}>Lleva el historial completo de mantenimiento</div></div>}
+          {[["Marca","brand","select",[...Object.keys(BC)]],["Modelo","model","text","Ej: CB190R, FZ 25..."],["Año","year","number","2024"],["Placa","plate","text","ABC123"],["Kilometraje actual","km","number","8500"],["Color (opcional)","color","text","Rojo Metálico"]].map(([l,k,type,ph])=>(
+            <div key={k} style={{marginBottom:14}}>
+              <div style={{...T.label(),marginBottom:8}}>{l}</div>
+              {type==="select"?
+                <select value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} style={{...inputStyle}}>{ph.map(o=><option key={o} value={o}>{o}</option>)}</select>:
+                <input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:type==="plate"?e.target.value.toUpperCase():e.target.value})} placeholder={ph} style={inputStyle}/>
+              }
+            </div>
+          ))}
+          <button onClick={()=>{if(form.brand&&form.model&&form.plate){setMoto({...form,km:parseInt(form.km)||0,nextSvc:(parseInt(form.km)||0)+3000});setEditing(false);}}} style={{...btn(),marginTop:8,opacity:form.plate&&form.model?1:0.4}}>Guardar moto</button>
+        </div>
+      </div>
+    );
+  }
+  const completed=(history||[]).filter(b=>b.status==="completed");
+  const progress=Math.min(((moto.km%3000)/3000)*100,100);
+  const bc=BC[moto.brand]||C.orange;
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+      <div style={headerStyle}>
+        <div style={{...T.display(20),flex:1}}>🏍️ Mi Moto</div>
+        <button onClick={()=>setEditing(true)} style={btnGhost({padding:"6px 12px"})}>Editar</button>
+      </div>
+      <div style={{padding:"16px 16px 0"}}>
+        {/* Moto hero card */}
+        <div style={{background:`linear-gradient(135deg,${bc}22,rgba(8,8,16,0.9))`,border:`1px solid ${bc}30`,borderRadius:18,padding:22,marginBottom:16,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-15,top:-15,fontSize:80,opacity:0.06}}>🏍️</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+            <div>
+              <span style={pill(bc+"22",bc)}>{moto.brand}</span>
+              <div style={{...T.display(26),marginTop:8,marginBottom:4}}>{moto.brand} {moto.model}</div>
+              <div style={T.sub()}>Año {moto.year} · {moto.plate}{moto.color&&` · ${moto.color}`}</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+            {[[(moto.km||0).toLocaleString()+" km","Odómetro",C.orange],[completed.length+" servicios","Historial",C.purple],["30 días","Garantía activa",C.green]].map(([v,l,c])=>(
+              <div key={l} style={{background:"rgba(0,0,0,0.35)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
+                <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14}}>{v}</div>
+                <div style={{...T.sub(10),marginTop:2}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Progress to next service */}
+        <div style={card({marginBottom:16})}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{...T.title(14),color:C.orange}}>🔔 Próximo mantenimiento</div>
+            <div style={{...T.sub(12),color:C.orange,fontWeight:700}}>{(moto.nextSvc||moto.km+3000).toLocaleString()} km</div>
+          </div>
+          <div style={{background:C.border,borderRadius:6,height:8,overflow:"hidden",marginBottom:8}}>
+            <div style={{height:"100%",width:progress+"%",background:`linear-gradient(90deg,${C.green},${progress>75?C.orange:C.green})`,borderRadius:6,transition:"width 0.6s ease"}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between"}}>
+            <div style={T.sub(11)}>Actual: {(moto.km||0).toLocaleString()} km</div>
+            <div style={T.sub(11)}>Faltan: {((moto.nextSvc||moto.km+3000)-(moto.km||0)).toLocaleString()} km</div>
+          </div>
+          {progress>75&&<button onClick={()=>navigate("search")} style={{...btn({marginTop:14,background:C.orange})}}>🔧 Agendar mantenimiento</button>}
+        </div>
+        {/* History */}
+        <div style={{...T.label(),marginBottom:12}}>Hoja de vida</div>
+        {(history||[]).length===0?<EmptyState icon="📋" title="Sin historial" sub="Tus servicios aparecerán aquí"/>:
+          (history||[]).map(b=>(
+            <div key={b.id} onClick={()=>navigate("bookingDetail",{booking:b})} style={{...card({cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"})}}>
+              <div>
+                <div style={{...T.title(14),marginBottom:2}}>{getSvc(b.svcId).icon} {getSvc(b.svcId).name}</div>
+                <div style={T.sub(12)}>{getTaller(b.tallerId)?.name} · {b.date}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <StatusBadge status={b.status}/>
+                {b.amount&&<div style={{color:C.orange,fontWeight:700,fontSize:14,marginTop:4}}>{fmt(b.amount)}</div>}
+              </div>
+            </div>
+          ))
+        }
+        <button onClick={()=>navigate("search")} style={{...btn({marginTop:8})}}>🔧 Agendar nuevo servicio</button>
+      </div>
+    </div>
+  );
+}
+
+function HistoryScreen({history,navigate,onRate}){
+  const [filter,setFilter]=useState("all");
+  const filtered=filter==="all"?history:history.filter(b=>b.status===filter);
+  const total=history.filter(b=>b.status==="completed").reduce((s,b)=>s+(b.amount||0),0);
+  return(
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+      <div style={headerStyle}><div style={{...T.display(20),flex:1}}>📋 Historial</div></div>
+      <div style={{padding:"12px 16px 0"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+          {[[history.filter(b=>b.status==="completed").length,"Completados",C.green],[fmt(total),"Total invertido",C.orange]].map(([v,l,c])=>(
+            <div key={l} style={card({textAlign:"center",padding:"14px 12px",margin:0})}>
+              <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22}}>{v}</div>
+              <div style={T.sub(11)}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+          {[["all","Todos"],["completed","Completados"],["confirmed","Confirmados"],["pending","Pendientes"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setFilter(v)} style={{padding:"5px 14px",cursor:"pointer",borderRadius:20,whiteSpace:"nowrap",fontSize:12,fontWeight:700,fontFamily:"'Syne',sans-serif",background:filter===v?"rgba(249,115,22,0.15)":C.surface,border:filter===v?`1px solid ${C.orange}`:`1px solid ${C.border}`,color:filter===v?C.orange:C.textSub,flexShrink:0}}>{l}</button>
+          ))}
+        </div>
+        {filtered.length===0?<EmptyState icon="📋" title="Nada aquí" sub="No hay servicios con este filtro"/>:
+          filtered.map(b=>(
+            <div key={b.id} onClick={()=>navigate("bookingDetail",{booking:b})} style={{...card({cursor:"pointer"})}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{...T.title(15),marginBottom:3}}>{getSvc(b.svcId).icon} {getSvc(b.svcId).name}</div>
+                  <div style={T.sub(12)}>{getTaller(b.tallerId)?.name}</div>
+                  <div style={{...T.sub(11),marginTop:3}}>{b.date}{b.km&&` · ${b.km.toLocaleString()} km`}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
+                  <StatusBadge status={b.status}/>
+                  {b.amount&&<div style={{color:C.orange,fontWeight:700,fontSize:15,marginTop:5}}>{fmt(b.amount)}</div>}
+                  {b.rating&&<div style={{marginTop:4}}><Stars rating={b.rating}/></div>}
+                  {b.status==="completed"&&!b.rating&&<button onClick={e=>{e.stopPropagation();onRate&&onRate(b);}} style={{...pill("rgba(245,158,11,0.15)",C.yellow,{border:`1px solid rgba(245,158,11,0.3)`,cursor:"pointer",marginTop:5,display:"inline-block"})}}>⭐ Calificar</button>}
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// MOTO APP (MOTOCICLISTA)
+// ═══════════════════════════════════════════════════
+function MotoApp({user,onLogout,toast}){
+  const [tab,setTab]=useState("home");
+  const [screen,setScreen]=useState(null);
+  const [screenParams,setScreenParams]=useState({});
+  const [moto,setMoto]=useState({brand:"Honda",model:"CB190R",year:"2023",plate:"KGF456",km:8750,color:"Rojo",nextSvc:11000});
+  const [bookings,setBookings]=useState(INIT_HISTORY);
+  const [reviews,setReviews]=useState(INIT_REVIEWS);
+  const [ratingTarget,setRatingTarget]=useState(null);
+
+  const navigate=(sc,params={})=>{setScreen(sc);setScreenParams(params);};
+  const goHome=()=>{setScreen(null);setScreenParams({});};
+  const addBooking=(b)=>{
+    setBookings(prev=>[...prev,{id:"b"+(prev.length+1),...b}]);
+    toast("¡Reserva confirmada! El taller te contactará pronto.","success","Reserva exitosa");
+  };
+  const addReview=(tallerId,rev)=>{
+    setReviews(prev=>({...prev,[tallerId]:[rev,...(prev[tallerId]||[])]}));
+    toast("¡Reseña publicada! Gracias por tu opinión.","success");
+  };
+  const submitRating=(booking,rating,comment)=>{
+    setBookings(prev=>prev.map(b=>b.id===booking.id?{...b,rating,notes:comment||b.notes}:b));
+    setRatingTarget(null);
+    toast("¡Gracias por tu calificación!","success");
+  };
+
+  const tabs=[["home","🏠","Inicio"],["search","🔍","Buscar"],["moto","🏍️","Mi Moto"],["history","📋","Historial"]];
+
+  const renderScreen=()=>{
+    if(screen==="tallerDetail")return<TallerDetailScreen t={screenParams.taller} onBack={()=>{setScreen("search");setScreenParams({});}} navigate={navigate} reviews={reviews} onAddReview={addReview} currentUser={user.name}/>;
+    if(screen==="booking")return<BookingScreen params={screenParams} onBack={()=>{setScreen("tallerDetail",{taller:screenParams.taller});}} addBooking={addBooking} toast={toast}/>;
+    if(screen==="bookingDetail")return<BookingDetailScreen booking={screenParams.booking} onBack={goHome} onRate={setRatingTarget}/>;
+    if(screen==="addMoto")return<MotoScreen moto={null} setMoto={(m)=>{setMoto(m);goHome();toast("¡Moto registrada correctamente!","success");}} navigate={navigate} history={bookings}/>;
+    return null;
+  };
+
+  if(screen&&["tallerDetail","booking","bookingDetail","addMoto"].includes(screen)){
+    return(
+      <div style={{background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        {renderScreen()}
+        {ratingTarget&&<RatingModal service={ratingTarget.svcId} tallerName={getTaller(ratingTarget.tallerId)?.name} onSubmit={(r,c)=>submitRating(ratingTarget,r,c)} onClose={()=>setRatingTarget(null)}/>}
+      </div>
+    );
+  }
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      {tab==="home"&&<HomeScreen user={user} moto={moto} bookings={bookings} navigate={(sc,p={})=>{if(["tallerDetail","booking","bookingDetail"].includes(sc)){setScreen(sc);setScreenParams(p);}else{setTab(sc);}}} toast={toast}/>}
+      {tab==="search"&&<SearchScreen navigate={(sc,p)=>{setScreen(sc);setScreenParams(p);}}/>}
+      {tab==="moto"&&<MotoScreen moto={moto} setMoto={setMoto} navigate={(sc,p)=>{if(sc==="search"){setTab("search");}else{setScreen(sc);setScreenParams(p);}}} history={bookings}/>}
+      {tab==="history"&&<HistoryScreen history={bookings} navigate={(sc,p)=>{setScreen(sc);setScreenParams(p);}} onRate={setRatingTarget}/>}
+      <div style={tabBarStyle}>
+        {tabs.map(([id,icon,label])=>(
+          <button key={id} onClick={()=>{setScreen(null);setTab(id);}} style={tabBtn(tab===id&&!screen)}>
+            <span style={{fontSize:22}}>{icon}</span>
+            <span style={{fontSize:10,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>{label}</span>
+          </button>
+        ))}
+        <button onClick={onLogout} style={{...tabBtn(false),flex:0.7}}>
+          <span style={{fontSize:20}}>⏻</span>
+          <span style={{fontSize:9,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>Salir</span>
+        </button>
+      </div>
+      {ratingTarget&&<RatingModal service={ratingTarget.svcId} tallerName={getTaller(ratingTarget.tallerId)?.name} onSubmit={(r,c)=>submitRating(ratingTarget,r,c)} onClose={()=>setRatingTarget(null)}/>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// TALLER APP
+// ═══════════════════════════════════════════════════
+function TallerApp({user,onLogout,toast}){
+  const [tab,setTab]=useState("dashboard");
+  const [reqs,setReqs]=useState(INIT_REQUESTS);
+  const [selReq,setSelReq]=useState(null);
+  const [quote,setQuote]=useState("");
+  const [cart,setCart]=useState([]);
+  const [orderConfirmed,setOrderConfirmed]=useState(false);
+
+  const update=(id,data)=>setReqs(r=>r.map(q=>q.id===id?{...q,...data}:q));
+  const pending=reqs.filter(r=>r.status==="pending");
+  const active=reqs.filter(r=>["confirmed","quoted","in_progress"].includes(r.status));
+  const completed=reqs.filter(r=>r.status==="completed");
+  const cartTotal=cart.reduce((s,p)=>s+p.price,0);
+
+  const ReqCard=({r,onTap})=>(
+    <div style={{...card({cursor:"pointer",borderColor:r.status==="pending"?"rgba(245,158,11,0.3)":C.border}),animation:"slideUp 0.2s ease"}} onClick={onTap}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+        <div>
+          <div style={{...T.title(15),marginBottom:2}}>{r.userName}</div>
+          <div style={T.sub(12)}>{r.moto}</div>
+          <div style={{...T.body(13),color:C.orange,marginTop:4}}>{getSvc(r.svcId).icon} {getSvc(r.svcId).name}</div>
+          <div style={{...T.sub(11),marginTop:3}}>📅 {r.date} · {r.time}</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <StatusBadge status={r.status}/>
+          {r.quote&&<div style={{color:C.orange,fontWeight:700,fontSize:14,marginTop:6}}>{fmt(r.quote)}</div>}
+        </div>
+      </div>
+      {r.status==="pending"&&(
+        <div style={{display:"flex",gap:8,marginTop:4}} onClick={e=>e.stopPropagation()}>
+          <button onClick={()=>{update(r.id,{status:"confirmed"});toast("Solicitud aceptada","success");}} style={{...btn({flex:1,padding:"9px",fontSize:13})}}>✓ Aceptar</button>
+          <button onClick={()=>{update(r.id,{status:"cancelled"});toast("Solicitud rechazada","error");}} style={{...btnGhost({flex:1,padding:"9px",fontSize:13})}}>✗ Rechazar</button>
+        </div>
+      )}
+    </div>
+  );
+
+  if(selReq){
+    const r=selReq;
+    return(
+      <div style={{background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <div style={headerStyle}>
+          <BackBtn onBack={()=>{setSelReq(null);setQuote("");}}/>
+          <div style={{flex:1,...T.title(16)}}>Solicitud de servicio</div>
+          <StatusBadge status={r.status}/>
+        </div>
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"0 16px",paddingTop:16}}>
+          <div style={card()}>
+            <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+              <Avatar name={r.userName}/>
+              <div><div style={{...T.title(17)}}>{r.userName}</div><div style={T.sub()}>{r.moto}</div></div>
+            </div>
+            <Divider/>
+            {[["Servicio",`${getSvc(r.svcId).icon} ${getSvc(r.svcId).name}`],["Fecha",`${r.date} · ${r.time}`],["Teléfono",r.phone]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                <span style={T.sub()}>{k}</span>
+                <span style={{...T.body(13),fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+            {r.quote&&<><Divider/><div style={{display:"flex",justifyContent:"space-between"}}><span style={T.sub()}>Cotización enviada</span><span style={{color:C.orange,fontWeight:700,fontSize:18,fontFamily:"'Syne',sans-serif"}}>{fmt(r.quote)}</span></div></>}
+          </div>
+          {r.status==="pending"&&(
+            <div style={card()}>
+              <div style={{...T.label(),marginBottom:10}}>Enviar cotización al cliente</div>
+              <input value={quote} onChange={e=>setQuote(e.target.value)} type="number" placeholder="Valor total en COP (ej: 95000)" style={{...inputStyle,marginBottom:12}}/>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{if(!quote){toast("Ingresa un valor","error");return;}update(r.id,{status:"quoted",quote:parseInt(quote)});toast("Cotización enviada al cliente","success");setSelReq(null);}} style={{...btn({flex:2,padding:"11px"})}}>📤 Enviar cotización</button>
+                <button onClick={()=>{update(r.id,{status:"confirmed"});toast("Servicio aceptado","success");setSelReq(null);}} style={{...btnOut({flex:1,padding:"11px"})}}>Aceptar</button>
+              </div>
+            </div>
+          )}
+          {r.status==="confirmed"&&(
+            <button onClick={()=>{update(r.id,{status:"in_progress"});toast("Servicio iniciado","success","⚙️");setSelReq(null);}} style={{...btn({background:"#1D4ED8"})}}>⚙️ Iniciar servicio</button>
+          )}
+          {r.status==="in_progress"&&(
+            <button onClick={()=>{update(r.id,{status:"completed"});toast("Servicio marcado como completado","success","✅");setSelReq(null);}} style={{...btn({background:C.green})}}>✅ Marcar como completado</button>
+          )}
+          <a href={`tel:${r.phone}`} style={{...btnOut({display:"block",textDecoration:"none",textAlign:"center",marginTop:12})}}>📞 Llamar al cliente</a>
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      {/* Header with logout */}
+      <div style={{...headerStyle,justifyContent:"space-between"}}>
+        <div>
+          <div style={{...T.label(),marginBottom:2}}>Panel de Taller</div>
+          <div style={{...T.title(16)}}>{user.tallerName||"Mi Taller"}</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {pending.length>0&&<div style={{background:C.yellow,color:"#000",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800}}>{pending.length}</div>}
+          <button onClick={onLogout} style={{...btnGhost({padding:"7px 12px",fontSize:12})}}>Salir ⏻</button>
+        </div>
+      </div>
+
+      {tab==="dashboard"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          {/* Stats */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+            {[[pending.length,"Nuevas",C.yellow,"🔔"],[active.length,"Activas",C.blue,"⚙️"],[completed.length,"Listas",C.green,"✅"]].map(([v,l,c,icon])=>(
+              <div key={l} style={card({textAlign:"center",padding:"14px 8px",margin:0})}>
+                <div style={{fontSize:22,marginBottom:4}}>{icon}</div>
+                <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:26}}>{v}</div>
+                <div style={T.sub(10)}>{l}</div>
+              </div>
+            ))}
+          </div>
+          {/* Revenue */}
+          <div style={{...card({background:"rgba(249,115,22,0.06)",border:`1px solid ${C.orangeBorder}`,marginBottom:20})}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={{...T.label(),color:C.orange,marginBottom:6}}>💰 Ingresos de hoy</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:30,color:C.orange}}>{fmt(620000)}</div>
+                <div style={{...T.sub(12),marginTop:4}}>3 servicios · ⭐ 4.7 promedio</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{...T.sub(12),marginBottom:4}}>Este mes</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:18,color:C.text}}>{fmt(4230000)}</div>
+              </div>
+            </div>
+          </div>
+          {/* Pending */}
+          {pending.length>0&&<>
+            <div style={{...T.label(),color:C.yellow,marginBottom:12}}>🔔 Nuevas solicitudes</div>
+            {pending.map(r=><ReqCard key={r.id} r={r} onTap={()=>setSelReq(r)}/>)}
+          </>}
+          {/* Active */}
+          {active.length>0&&<>
+            <div style={{...T.label(),marginBottom:12,marginTop:8}}>⚙️ En progreso</div>
+            {active.map(r=><ReqCard key={r.id} r={r} onTap={()=>setSelReq(r)}/>)}
+          </>}
+          {pending.length===0&&active.length===0&&<EmptyState icon="✅" title="Todo al día" sub="No hay solicitudes pendientes"/>}
+        </div>
+      )}
+
+      {tab==="agenda"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          <div style={{...T.label(),marginBottom:16}}>Agenda completa</div>
+          {reqs.filter(r=>r.status!=="cancelled").length===0?<EmptyState icon="📅" title="Agenda vacía" sub="No hay citas programadas"/>:
+            reqs.filter(r=>r.status!=="cancelled").map(r=><ReqCard key={r.id} r={r} onTap={()=>setSelReq(r)}/>)}
+        </div>
+      )}
+
+      {tab==="partes"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"fadeIn 0.2s ease"}}>
+          <div style={{padding:"16px 16px 0"}}>
+            <div style={{...card({background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",marginBottom:16})}}>
+              <div style={{color:C.green,fontWeight:700,fontSize:13,marginBottom:4}}>✓ Distribuidor Oficial</div>
+              <div style={T.sub()}>Precios mayoristas · Repuestos certificados con trazabilidad</div>
+            </div>
+            {orderConfirmed&&(
+              <div style={{...card({background:"rgba(16,185,129,0.1)",border:`1px solid ${C.green}`,marginBottom:16})}}>
+                <div style={{color:C.green,fontWeight:700,marginBottom:4}}>✅ Pedido confirmado</div>
+                <div style={T.sub()}>Tu pedido fue enviado al distribuidor. Entrega en 24-48 horas.</div>
+                <button onClick={()=>{setOrderConfirmed(false);setCart([]);}} style={{...btnGhost({marginTop:10,fontSize:12})}}>Hacer nuevo pedido</button>
+              </div>
+            )}
+            {PARTS.map(p=>(
+              <div key={p.id} style={card()}>
+                <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <div style={{flex:1}}>
+                    {p.orig&&<span style={{...pill("rgba(16,185,129,0.15)",C.green),marginBottom:6,display:"inline-block"}}>ORIGINAL</span>}
+                    <div style={{...T.title(14),marginBottom:2}}>{p.name}</div>
+                    <div style={{...T.sub(11),marginBottom:2}}>{p.brand} · SKU: {p.sku}</div>
+                    <div style={T.sub(11)}>Stock: {p.stock} uds</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,marginBottom:8}}>{fmt(p.price)}</div>
+                    <button onClick={()=>cart.find(c=>c.id===p.id)?setCart(prev=>prev.filter(c=>c.id!==p.id)):setCart(prev=>[...prev,p])} style={{...pill(cart.find(c=>c.id===p.id)?"rgba(16,185,129,0.2)":"rgba(249,115,22,0.15)",cart.find(c=>c.id===p.id)?C.green:C.orange,{border:"none",cursor:"pointer",padding:"5px 12px",fontSize:12})}}>
+                      {cart.find(c=>c.id===p.id)?"✓ En carrito":"+ Agregar"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {cart.length>0&&!orderConfirmed&&(
+            <div style={{padding:"0 16px 16px"}}>
+              <div style={{...card({background:C.orangeDim,border:`1px solid ${C.orangeBorder}`})}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{...T.title(15)}}>{cart.length} repuesto{cart.length>1?"s":""}</div>
+                  <div style={{color:C.orange,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18}}>{fmt(cartTotal)}</div>
+                </div>
+                {cart.map(p=><div key={p.id} style={{...T.sub(12),marginBottom:4}}>• {p.name}</div>)}
+                <button onClick={()=>{setOrderConfirmed(true);toast("Pedido enviado al distribuidor","success","📦");}} style={{...btn({marginTop:12})}}>📦 Confirmar pedido · {fmt(cartTotal)}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab==="metricas"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          <div style={{...card({background:"rgba(16,185,129,0.05)",border:"1px solid rgba(16,185,129,0.2)",marginBottom:16})}}>
+            <div style={{...T.label(),color:C.green,marginBottom:4}}>Badge actual</div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}><Badge cert="certificado"/><div style={T.sub()}>Próximo nivel: ÉLITE en 53 servicios más</div></div>
+          </div>
+          {[["Servicios este mes","47","↑ 12%",C.green],["Ingreso del mes",fmt(4230000),"↑ 8%",C.orange],["Rating promedio","4.7 ⭐","↑ 0.2",C.yellow],["Ticket promedio",fmt(89000),"+$5k",C.blue],["Tasa retención","68%","↑ 3%",C.purple],["Repuestos/mes","23 uds","=",C.textSub]].map(([l,v,t2,c])=>(
+            <div key={l} style={{...card({display:"flex",justifyContent:"space-between",alignItems:"center"})}}>
+              <div><div style={T.sub(12)}>{l}</div><div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22}}>{v}</div></div>
+              <span style={pill("rgba(16,185,129,0.1)",C.green)}>{t2}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={tabBarStyle}>
+        {[["dashboard","🏠","Inicio"],["agenda","📅","Agenda"],["partes","🔩","Repuestos"],["metricas","📊","Métricas"]].map(([id,icon,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={tabBtn(tab===id)}>
+            <span style={{fontSize:22}}>{icon}</span>
+            <span style={{fontSize:10,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN APP
+// ═══════════════════════════════════════════════════
+function AdminApp({onLogout,toast}){
+  const [tab,setTab]=useState("dashboard");
+  const [workshops,setWorkshops]=useState([
+    {id:1,name:"Honda Motos Cúcuta",status:"active",cert:"elite",svcs:345,revenue:31050000,rating:4.7,city:"Cúcuta"},
+    {id:2,name:"Yamaha Meyer Motos",status:"active",cert:"elite",svcs:412,revenue:36680000,rating:4.8,city:"Cúcuta"},
+    {id:3,name:"MotoGarage Express",status:"pending",cert:null,svcs:0,revenue:0,rating:null,city:"Cúcuta"},
+    {id:4,name:"Taller Rápido Km0",status:"suspended",cert:"verificado",svcs:23,revenue:1870000,rating:2.8,city:"Bucaramanga"},
+    {id:5,name:"Auteco Mobility Cúcuta",status:"active",cert:"certificado",svcs:221,revenue:18900000,rating:4.6,city:"Cúcuta"},
+  ]);
+  const certify=(id,cert)=>{setWorkshops(w=>w.map(x=>x.id===id?{...x,status:"active",cert}:x));toast(`Taller certificado como ${cert}`,"success");};
+  const suspend=(id)=>{setWorkshops(w=>w.map(x=>x.id===id?{...x,status:"suspended"}:x));toast("Taller suspendido","error");};
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      <div style={{...headerStyle,justifyContent:"space-between"}}>
+        <div>
+          <div style={{...T.label(),marginBottom:2}}>Panel Administrador</div>
+          <div style={{...T.title(16)}}>MotoService Admin</div>
+        </div>
+        <button onClick={onLogout} style={{...btnGhost({padding:"7px 12px",fontSize:12})}}>Salir ⏻</button>
+      </div>
+
+      {tab==="dashboard"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+            {[["Talleres activos","8","🏪",C.green],["Servicios/mes","623","🔧",C.orange],["Ingresos/mes",fmt(56070000),"💰",C.yellow],["Usuarios","1.847","👥",C.blue]].map(([l,v,icon,c])=>(
+              <div key={l} style={card({padding:"16px 14px",margin:0})}>
+                <div style={{fontSize:24,marginBottom:6}}>{icon}</div>
+                <div style={{color:c,fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22}}>{v}</div>
+                <div style={T.sub(11)}>{l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{...T.label(),marginBottom:12}}>Red de talleres</div>
+          {workshops.map(w=>(
+            <div key={w.id} style={card()}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:w.status==="pending"?12:0}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+                    {w.cert&&<Badge cert={w.cert}/>}
+                    <span style={pill(w.status==="active"?"rgba(16,185,129,0.15)":w.status==="pending"?"rgba(245,158,11,0.15)":"rgba(239,68,68,0.15)",w.status==="active"?C.green:w.status==="pending"?C.yellow:C.red)}>{w.status==="active"?"ACTIVO":w.status==="pending"?"PENDIENTE":"SUSPENDIDO"}</span>
+                  </div>
+                  <div style={{...T.title(15),marginBottom:2}}>{w.name}</div>
+                  <div style={T.sub(12)}>{w.city} · {w.svcs} servicios</div>
+                  {w.revenue>0&&<div style={{color:C.orange,fontWeight:700,fontSize:13,marginTop:3}}>{fmt(w.revenue)}</div>}
+                  {w.rating&&<Stars rating={w.rating}/>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {w.status==="active"&&<button onClick={()=>suspend(w.id)} style={{...btnGhost({padding:"5px 10px",fontSize:11})}}>Suspender</button>}
+                </div>
+              </div>
+              {w.status==="pending"&&(
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>certify(w.id,"verificado")} style={{...btnGhost({flex:1,padding:"8px",fontSize:12})}}>Verificado</button>
+                  <button onClick={()=>certify(w.id,"certificado")} style={{...btnOut({flex:1,padding:"8px",fontSize:12})}}>Certificado</button>
+                  <button onClick={()=>certify(w.id,"elite")} style={{...btn({flex:1,padding:"8px",fontSize:12,background:"#7C3AED"})}}>Élite ⭐</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==="reportes"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          <div style={{...card({background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.3)",marginBottom:20})}}>
+            <div style={{...T.label(),color:"#A78BFA",marginBottom:8}}>NPS Plataforma</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:48,color:"#A78BFA"}}>58</div>
+            <div style={T.sub()}>Promotores · Objetivo: 65 para Q2</div>
+          </div>
+          {[["Servicio top","Cambio de aceite (34%)"],["Taller con mayor rating","Yamaha Meyer (4.8)"],["Ciudad líder","Cúcuta (67%)"],["Ticket promedio",fmt(89000)],["Repuestos/mes","847 unidades"],["Comisiones generadas",fmt(5600000)],["Retención D30","62%"],["Talleres en riesgo","1 (rating < 3.5)"]].map(([k,v])=>(
+            <div key={k} style={{...card({display:"flex",justifyContent:"space-between",alignItems:"center"})}}>
+              <span style={T.sub(13)}>{k}</span>
+              <span style={{color:C.orange,fontWeight:700,fontSize:14}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==="usuarios"&&(
+        <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:"16px 16px 0",animation:"fadeIn 0.2s ease"}}>
+          <div style={{...T.label(),marginBottom:12}}>Base de usuarios</div>
+          {[{name:"Alejandro Durán",phone:"315 123 4567",motos:"Honda CB190R",svcs:3,last:"5 Mar",status:"active"},{name:"María González",phone:"316 234 5678",motos:"Yamaha FZ 25",svcs:1,last:"28 Feb",status:"active"},{name:"Carlos Pérez",phone:"317 345 6789",motos:"Bajaj NS200",svcs:5,last:"1 Mar",status:"active"},{name:"Andrea Torres",phone:"318 456 7890",motos:"AKT NKD 125",svcs:0,last:"—",status:"inactive"}].map((u,i)=>(
+            <div key={i} style={card()}>
+              <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                <Avatar name={u.name}/>
+                <div style={{flex:1}}>
+                  <div style={{...T.title(14),marginBottom:2}}>{u.name}</div>
+                  <div style={{...T.sub(12),marginBottom:2}}>📞 {u.phone} · 🏍️ {u.motos}</div>
+                  <div style={T.sub(11)}>{u.svcs} servicios · Último: {u.last}</div>
+                </div>
+                <span style={pill(u.status==="active"?"rgba(16,185,129,0.15)":"rgba(100,116,139,0.15)",u.status==="active"?C.green:C.textMuted)}>{u.status==="active"?"Activo":"Inactivo"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={tabBarStyle}>
+        {[["dashboard","📊","Dashboard"],["reportes","📈","Reportes"],["usuarios","👥","Usuarios"]].map(([id,icon,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={tabBtn(tab===id)}>
+            <span style={{fontSize:22}}>{icon}</span>
+            <span style={{fontSize:10,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// AUTH SCREEN
+// ═══════════════════════════════════════════════════
+function AuthScreen({onLogin}){
+  const [role,setRole]=useState("motociclista");
+  const [phone,setPhone]=useState("");
+  const [name,setName]=useState("");
+  const [otp,setOtp]=useState(["","","",""]);
+  const [step,setStep]=useState("form");
+  const [loading,setLoading]=useState(false);
+  const otpRef0=useRef(null);
+  const otpRef1=useRef(null);
+  const otpRef2=useRef(null);
+  const otpRef3=useRef(null);
+  const otpRefs=[otpRef0,otpRef1,otpRef2,otpRef3];
+  const demos={motociclista:{name:"Alejandro Durán",phone:"3151234567",role:"motociclista"},taller:{name:"Mecánico García",phone:"3162345678",role:"taller",tallerName:"Honda Motos Cúcuta"},admin:{name:"Admin MotoService",phone:"3173456789",role:"admin"}};
+
+  const handleOtpChange=(i,v)=>{
+    const n=[...otp];n[i]=v.slice(-1);setOtp(n);
+    if(v&&i<3)otpRefs[i+1].current?.focus();
+    if(!v&&i>0)otpRefs[i-1].current?.focus();
+  };
+  const otpVal=otp.join("");
+  const verify=()=>{if(otpVal.length===4){setLoading(true);setTimeout(()=>{onLogin({name:name||"Usuario",phone,role:"motociclista"});setLoading(false);},1000);}};
+
+  return(
+    <div style={{background:"linear-gradient(170deg,#0d0d20,#08080f)",minHeight:"100vh",display:"flex",flexDirection:"column",padding:"0 24px",justifyContent:"center"}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"40%",background:"radial-gradient(ellipse at 50% 0%,rgba(249,115,22,0.12),transparent 60%)",pointerEvents:"none"}}/>
+      {/* Logo */}
+      <div style={{textAlign:"center",marginBottom:40,paddingTop:40}}>
+        <div style={{fontSize:60,marginBottom:12}}>🏍️</div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:44,color:C.orange,letterSpacing:2,lineHeight:1}}>MOTO<br/>SERVICE</div>
+        <div style={{...T.sub(11),letterSpacing:4,marginTop:8}}>COLOMBIA · RED CERTIFICADA</div>
+      </div>
+
+      {/* Demo */}
+      <div style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.25)",borderRadius:18,padding:20,marginBottom:24}}>
+        <div style={{color:"#A78BFA",fontWeight:700,fontSize:12,marginBottom:12,letterSpacing:1}}>⚡ ACCESO DEMO RÁPIDO</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {["motociclista","taller","admin"].map(r=>(
+            <button key={r} onClick={()=>setRole(r)} style={{background:role===r?C.orangeDim:C.surface,border:role===r?`1.5px solid ${C.orange}`:`1px solid ${C.border}`,color:role===r?C.orange:C.textSub,borderRadius:12,padding:"10px 4px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Syne',sans-serif",textAlign:"center",transition:"all 0.15s"}}>
+              <div style={{fontSize:20,marginBottom:3}}>{r==="motociclista"?"🏍️":r==="taller"?"🔧":"⚙️"}</div>
+              {r==="motociclista"?"Motero":r==="taller"?"Taller":"Admin"}
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>onLogin(demos[role])} style={btn()}>
+          Entrar como {role==="motociclista"?"Motociclista":role==="taller"?"Taller Afiliado":"Administrador"} →
+        </button>
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+        <div style={{flex:1,height:1,background:C.border}}/>
+        <span style={T.sub(11)}>o regístrate con tu celular</span>
+        <div style={{flex:1,height:1,background:C.border}}/>
+      </div>
+
+      {step==="form"?(
+        <>
+          <div style={{...T.label(),marginBottom:8}}>Número de celular</div>
+          <div style={{display:"flex",gap:10,marginBottom:14}}>
+            <div style={{...inputStyle,width:56,padding:"12px 8px",textAlign:"center",flexShrink:0,color:C.textSub}}>🇨🇴</div>
+            <input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,""))} placeholder="3xx xxx xxxx" maxLength={10} style={{...inputStyle,flex:1}}/>
+          </div>
+          <div style={{...T.label(),marginBottom:8}}>Tu nombre</div>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nombre completo" style={{...inputStyle,marginBottom:20}}/>
+          <button onClick={()=>{if(phone.length>=10)setStep("otp");}} style={{...btn(),opacity:phone.length>=10?1:0.4}}>Enviar código SMS →</button>
+        </>
+      ):(
+        <>
+          <div style={{...card({background:C.greenDim,border:`1px solid rgba(16,185,129,0.3)`,textAlign:"center",marginBottom:20})}}>
+            <div style={{color:C.green,fontWeight:700,marginBottom:4}}>✓ Código enviado</div>
+            <div style={T.sub()}>+57 {phone}</div>
+            <div style={{...T.sub(11),color:C.orange,marginTop:4}}>Demo: ingresa cualquier 4 dígitos</div>
+          </div>
+          <div style={{...T.label(),marginBottom:12,textAlign:"center"}}>Código de verificación</div>
+          <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:20}}>
+            {[0,1,2,3].map(i=>(
+              <input key={i} ref={otpRefs[i]} maxLength={1} inputMode="numeric" style={{...inputStyle,width:60,height:60,textAlign:"center",fontSize:26,fontWeight:700,padding:0,borderColor:otp[i]?C.orange:C.border}} value={otp[i]} onChange={e=>handleOtpChange(i,e.target.value)}/>
+            ))}
+          </div>
+          <button onClick={verify} style={{...btn(),opacity:otpVal.length===4?1:0.4,marginBottom:12}}>{loading?"Verificando...":"Verificar y entrar →"}</button>
+          <button onClick={()=>{setStep("form");setOtp(["","","",""]);}} style={btnGhost({width:"100%"})}>← Cambiar número</button>
+        </>
+      )}
+      <div style={{height:40}}/>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// ROOT APP
+// ═══════════════════════════════════════════════════
+function App(){
+  const [user,setUser]=useState(null);
+  const [toasts,setToasts]=useState([]);
+
+  const toast=(msg,type="info",title="")=>{
+    const id=Date.now();
+    setToasts(prev=>[...prev,{id,msg,type,title}]);
+    setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),3500);
+  };
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh"}}>
+      <Toast toasts={toasts}/>
+      {!user&&<AuthScreen onLogin={setUser}/>}
+      {user?.role==="taller"&&<TallerApp user={user} onLogout={()=>setUser(null)} toast={toast}/>}
+      {user?.role==="admin"&&<AdminApp onLogout={()=>setUser(null)} toast={toast}/>}
+      {user?.role==="motociclista"&&<MotoApp user={user} onLogout={()=>setUser(null)} toast={toast}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
